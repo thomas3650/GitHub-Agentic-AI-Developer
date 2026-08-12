@@ -5,6 +5,8 @@
   ],
   "dependencyDashboard": true,
   "dependencyDashboardApproval": true,
+  "dependencyDashboardTitle": "Dependency Dashboard",
+  "createIssues": true,
   "labels": [
     "dependencies"
   ],
