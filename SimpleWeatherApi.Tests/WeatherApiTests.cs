@@ -31,9 +31,30 @@ public sealed class WeatherApiTests : IClassFixture<WebApplicationFactory<Progra
     }
 
     [Fact]
+    public async Task GetWeatherTrimsCityName()
+    {
+        var response = await _client.GetAsync("/weather?city=%20%20London%20%20");
+
+        response.EnsureSuccessStatusCode();
+
+        var forecast = await response.Content.ReadFromJsonAsync<WeatherResponse>();
+
+        Assert.NotNull(forecast);
+        Assert.Equal("London", forecast.City);
+    }
+
+    [Fact]
     public async Task GetWeatherRequiresCity()
     {
         var response = await _client.GetAsync("/weather");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetWeatherRejectsBlankCity()
+    {
+        var response = await _client.GetAsync("/weather?city=%20%20%20");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

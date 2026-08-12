@@ -11,13 +11,13 @@ This repository contains a simple C# weather API, automated tests, and GitHub wo
 
 ```bash
 dotnet restore GitHubAgenticAIDeveloper.slnx
-dotnet run --project /home/runner/work/GitHub-Agentic-AI-Developer/GitHub-Agentic-AI-Developer/SimpleWeatherApi/SimpleWeatherApi.csproj
+dotnet run --project SimpleWeatherApi/SimpleWeatherApi.csproj --urls http://127.0.0.1:5055
 ```
 
 Example request:
 
 ```bash
-curl "http://localhost:5000/weather?city=London"
+curl "http://127.0.0.1:5055/weather?city=London"
 ```
 
 ## Test
