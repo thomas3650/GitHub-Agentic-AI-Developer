@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Mvc.Testing;
 using SimpleWeatherApi;
 
@@ -46,15 +47,19 @@ public sealed class WeatherApiTests : IClassFixture<WebApplicationFactory<Progra
     public async Task GetWeatherRequiresCity()
     {
         var response = await _client.GetAsync("/weather");
+        var error = await response.Content.ReadFromJsonAsync<JsonObject>();
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("The city query parameter is required.", error?["error"]?.GetValue<string>());
     }
 
     [Fact]
     public async Task GetWeatherRejectsBlankCity()
     {
         var response = await _client.GetAsync("/weather?city=%20%20%20");
+        var error = await response.Content.ReadFromJsonAsync<JsonObject>();
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("The city query parameter is required.", error?["error"]?.GetValue<string>());
     }
 }
