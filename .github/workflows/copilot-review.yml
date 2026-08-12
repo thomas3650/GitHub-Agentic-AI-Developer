@@ -12,32 +12,28 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - name: Request Copilot Review
-        uses: github/copilot-code-review-action@v1
+      - name: Checkout code
+        uses: actions/checkout@v4.1.7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          summary-prompt: |
-            You are reviewing a C# weather API project (.NET 10.0). Provide focused feedback on:
+          fetch-depth: 0
 
-            **Priority Areas:**
-            1. **Security** - Flag any security vulnerabilities in API endpoints, authentication, data handling
-            2. **C# Best Practices** - Verify code follows C# conventions, naming, SOLID principles
-            3. **.NET 10.0 Compatibility** - Check for compatibility issues with .NET 10.0
-            4. **Async/Await Patterns** - Verify proper async/await usage (no blocking calls, proper ConfigureAwait)
-            5. **Unit Test Coverage** - Flag missing tests or suggest test improvements
-            6. **API Design** - Check REST endpoint design, error handling, response formats
-            7. **Spelling & Grammar** - Check for spelling mistakes and grammar errors in code comments, variable names, and documentation
+      - name: Request Copilot Review via GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr review ${{ github.event.pull_request.number }} \
+            --comment \
+            --body "## Copilot Code Review
 
-            **For Renovate/Dependency Update PRs:**
-            - Verify dependency updates are safe and stable
-            - Check for known breaking changes in major version updates
-            - Highlight if security patches are included
-            - Warn if dependencies have low maintenance activity
+          Reviewing this PR for:
+          - **Security** - API endpoint vulnerabilities, authentication, data handling
+          - **C# Best Practices** - Code follows C# conventions, naming, SOLID principles
+          - **.NET 10.0 Compatibility** - Framework compatibility issues
+          - **Async/Await Patterns** - Proper async usage without blocking calls
+          - **Unit Test Coverage** - Test presence and quality
+          - **API Design** - REST endpoint design, error handling, response formats
+          - **Spelling & Grammar** - Code comments, variable names, documentation
 
-            **Do NOT comment on:**
-            - Minor style issues (formatting, indentation)
-            - Whitespace changes
-            - Auto-generated code
-            - Simple comment/documentation formatting
+          For Renovate PRs: Verifying dependency updates are safe, checking for breaking changes, highlighting security patches.
 
-            Keep comments concise and actionable. Use the code review format with specific line references.
+          ✅ This is an automated initial review - not a replacement for human reviews."
