@@ -29,6 +29,8 @@ public sealed class WeatherForecastServiceTests
         var lowerCaseForecast = _service.GetForecast("london");
         var upperCaseForecast = _service.GetForecast("LONDON");
 
+        Assert.Equal("london", lowerCaseForecast.City);
+        Assert.Equal("LONDON", upperCaseForecast.City);
         Assert.Equal(lowerCaseForecast.TemperatureC, upperCaseForecast.TemperatureC);
         Assert.Equal(lowerCaseForecast.Condition, upperCaseForecast.Condition);
     }
