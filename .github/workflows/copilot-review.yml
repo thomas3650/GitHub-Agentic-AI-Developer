@@ -26,6 +26,7 @@ jobs:
             4. **Async/Await Patterns** - Verify proper async/await usage (no blocking calls, proper ConfigureAwait)
             5. **Unit Test Coverage** - Flag missing tests or suggest test improvements
             6. **API Design** - Check REST endpoint design, error handling, response formats
+            7. **Spelling & Grammar** - Check for spelling mistakes and grammar errors in code comments, variable names, and documentation
 
             **For Renovate/Dependency Update PRs:**
             - Verify dependency updates are safe and stable
