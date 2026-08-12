@@ -29,4 +29,4 @@ dotnet test GitHubAgenticAIDeveloper.slnx
 ## GitHub workflows
 
 - `pull-request-validation.yml` restores, builds, and tests the solution for every pull request update
-- `renovate.yml` runs Renovate on a schedule and can create a dependency dashboard issue for outdated dependencies
+- `renovate.yml` runs Renovate on a schedule with a dedicated `RENOVATE_TOKEN` secret and can create a dependency dashboard issue for outdated dependencies
