@@ -24,6 +24,16 @@ public sealed class WeatherForecastServiceTests
     }
 
     [Fact]
+    public void GetForecastIgnoresCityNameCasingForSeedCalculation()
+    {
+        var lowerCaseForecast = _service.GetForecast("london");
+        var upperCaseForecast = _service.GetForecast("LONDON");
+
+        Assert.Equal(lowerCaseForecast.TemperatureC, upperCaseForecast.TemperatureC);
+        Assert.Equal(lowerCaseForecast.Condition, upperCaseForecast.Condition);
+    }
+
+    [Fact]
     public void GetForecastRejectsBlankCity()
     {
         Assert.Throws<ArgumentException>(() => _service.GetForecast("   "));
