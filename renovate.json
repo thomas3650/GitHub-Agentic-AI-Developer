@@ -8,10 +8,12 @@
   "labels": [
     "dependencies"
   ],
+  "nuget": {
+    "enabled": true
+  },
   "packageRules": [
     {
       "matchManagers": [
-        "github-actions",
         "nuget"
       ],
       "groupName": "project dependencies"
