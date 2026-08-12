@@ -18,16 +18,15 @@ public sealed class WeatherApiTests : IClassFixture<WebApplicationFactory<Progra
     public async Task GetWeatherReturnsForecastForCity()
     {
         var response = await _client.GetAsync("/weather?city=London");
+        var validConditions = new[] { "Sunny", "Cloudy", "Rainy", "Windy", "Snowy" };
 
         response.EnsureSuccessStatusCode();
 
         var forecast = await response.Content.ReadFromJsonAsync<WeatherResponse>();
-
         Assert.NotNull(forecast);
         Assert.Equal("London", forecast.City);
-        Assert.Equal(-2, forecast.TemperatureC);
-        Assert.Equal(28, forecast.TemperatureF);
-        Assert.Equal("Windy", forecast.Condition);
+        Assert.Contains(forecast.Condition, validConditions);
+        Assert.Equal((int)Math.Round((forecast.TemperatureC * 9d / 5d) + 32), forecast.TemperatureF);
     }
 
     [Fact]

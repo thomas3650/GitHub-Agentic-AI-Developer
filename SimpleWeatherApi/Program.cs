@@ -1,23 +1,19 @@
 using SimpleWeatherApi;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSingleton<IWeatherForecastService, WeatherForecastService>();
+
 var app = builder.Build();
 
-app.MapGet("/weather", (string? city) =>
+app.MapGet("/weather", (string? city, IWeatherForecastService weatherForecastService) =>
 {
     if (string.IsNullOrWhiteSpace(city))
     {
         return Results.BadRequest(new { error = "The city query parameter is required." });
     }
 
-    var normalizedCity = city.Trim();
-    var seed = normalizedCity.ToUpperInvariant().Sum(character => character);
-    var temperatureC = (seed % 35) - 5;
-    var conditions = new[] { "Sunny", "Cloudy", "Rainy", "Windy", "Snowy" };
-    var condition = conditions[seed % conditions.Length];
-    var temperatureF = (int)Math.Round((temperatureC * 9d / 5d) + 32);
-
-    return Results.Ok(new WeatherResponse(normalizedCity, temperatureC, temperatureF, condition));
+    var forecast = weatherForecastService.GetForecast(city);
+    return Results.Ok(WeatherResponse.FromForecast(forecast));
 });
 
 app.Run();

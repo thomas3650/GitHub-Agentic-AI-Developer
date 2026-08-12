@@ -1,0 +1,31 @@
+using SimpleWeatherApi;
+
+namespace SimpleWeatherApi.Tests;
+
+public sealed class WeatherForecastServiceTests
+{
+    private readonly WeatherForecastService _service = new();
+
+    [Fact]
+    public void GetForecastTrimsTheCityName()
+    {
+        var forecast = _service.GetForecast("  London  ");
+
+        Assert.Equal("London", forecast.City);
+    }
+
+    [Fact]
+    public void GetForecastReturnsDeterministicForecastForSameCity()
+    {
+        var firstForecast = _service.GetForecast("London");
+        var secondForecast = _service.GetForecast("London");
+
+        Assert.Equal(firstForecast, secondForecast);
+    }
+
+    [Fact]
+    public void GetForecastRejectsBlankCity()
+    {
+        Assert.Throws<ArgumentException>(() => _service.GetForecast("   "));
+    }
+}
