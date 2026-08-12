@@ -1,0 +1,59 @@
+name: Pull Request Approval Check
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+  pull_request_review:
+    types:
+      - submitted
+      - dismissed
+      - edited
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  approval:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Require at least one approval
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pullNumber = context.payload.pull_request?.number;
+
+            if (!pullNumber) {
+              core.setFailed('No pull request was found in the event payload.');
+              return;
+            }
+
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pullNumber,
+              per_page: 100
+            });
+
+            const latestStateByReviewer = new Map();
+            for (const review of reviews) {
+              if (!review.user?.login || review.state === 'COMMENTED') {
+                continue;
+              }
+
+              latestStateByReviewer.set(review.user.login, review.state);
+            }
+
+            const approved = [...latestStateByReviewer.values()].includes('APPROVED');
+
+            if (!approved) {
+              core.setFailed('At least one approving review is required for this pull request.');
+              return;
+            }
+
+            core.notice('Approval requirement satisfied.');
