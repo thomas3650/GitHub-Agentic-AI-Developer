@@ -1,10 +1,12 @@
 namespace SimpleWeatherApi.Validation;
 
+using System.Diagnostics.CodeAnalysis;
+
 public sealed class CityQueryValidator : ICityQueryValidator
 {
     internal const string MissingCityQueryParameterError = "The city query parameter is required.";
 
-    public bool TryNormalize(string? city, out string normalizedCity, out IResult? validationError)
+    public bool TryNormalize(string? city, out string normalizedCity, [NotNullWhen(false)] out IResult? validationError)
     {
         if (string.IsNullOrWhiteSpace(city))
         {

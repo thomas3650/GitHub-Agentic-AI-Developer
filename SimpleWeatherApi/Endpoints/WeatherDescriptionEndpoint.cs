@@ -14,7 +14,7 @@ public sealed class WeatherDescriptionEndpoint : IEndpoint
         {
             if (!cityQueryValidator.TryNormalize(city, out var normalizedCity, out var validationError))
             {
-                return validationError!;
+                return validationError;
             }
 
             var forecast = weatherForecastService.GetForecast(normalizedCity);

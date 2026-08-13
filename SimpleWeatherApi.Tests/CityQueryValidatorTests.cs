@@ -19,7 +19,7 @@ public sealed class CityQueryValidatorTests
     }
 
     [Fact]
-    public void TryNormalizeReturnsTrueAndPreservesUntrimmedCityWhenNoWhitespace()
+    public void TryNormalizeReturnsInputUnchangedWhenCityHasNoSurroundingWhitespace()
     {
         var success = _validator.TryNormalize("Paris", out var normalizedCity, out var validationError);
 
