@@ -33,7 +33,9 @@ public sealed class WeatherDescriptionService : IWeatherDescriptionService
 
     private static string GetConditionDescription(string condition)
     {
-        return condition.ToLowerInvariant() switch
+        var normalizedCondition = condition.ToLowerInvariant();
+
+        return normalizedCondition switch
         {
             "sunny" or "clear" => "beautiful sunny skies",
             "cloudy" or "overcast" => "gray cloudy skies",
@@ -41,7 +43,7 @@ public sealed class WeatherDescriptionService : IWeatherDescriptionService
             "snowy" or "snow" => "snow on the ground",
             "windy" => "strong winds",
             "stormy" or "thunderstorm" => "thunderstorms approaching",
-            _ => $"{condition.ToLowerInvariant()} conditions",
+            _ => $"{normalizedCondition} conditions",
         };
     }
 }
