@@ -33,7 +33,9 @@ public sealed class WeatherDescriptionService : IWeatherDescriptionService
 
     private static string GetConditionDescription(string condition)
     {
-        var normalizedCondition = condition.ToLowerInvariant();
+        ArgumentException.ThrowIfNullOrWhiteSpace(condition);
+
+        var normalizedCondition = condition.Trim().ToLowerInvariant();
 
         return normalizedCondition switch
         {
