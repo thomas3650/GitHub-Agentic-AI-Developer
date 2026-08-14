@@ -52,3 +52,9 @@ branch-protection settings — is documented for the cloud agent in
 - Anything larger than a docs update (source, tests, workflows, config,
   `.github/**`) should be a separate PR without the `docs-only` label; it
   will go through the standard human-review path.
+
+## When auto-merge doesn't work
+
+See [troubleshooting.md](troubleshooting.md) for the failure modes of the
+auto-merge pipeline (label not matched, non-`docs/` paths sneaking in,
+`copilot-review-clean` staying pending, PR falling back to human review).
