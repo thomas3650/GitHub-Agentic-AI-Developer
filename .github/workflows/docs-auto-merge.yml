@@ -1,0 +1,74 @@
+name: Docs Auto-Merge
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+      - ready_for_review
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: docs-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  auto-merge:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for docs-only label
+        id: label
+        env:
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          echo "Labels on PR: $LABELS_JSON"
+          if echo "$LABELS_JSON" | jq -e 'index("docs-only")' > /dev/null; then
+            echo "eligible=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs-only label not present; nothing to do."
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify every changed file is under docs/
+        if: steps.label.outputs.eligible == 'true'
+        id: files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename')
+          echo "Changed files:"
+          echo "$files"
+          if [ -z "$files" ]; then
+            echo "PR reports no changed files; refusing to auto-merge."
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          non_docs=$(echo "$files" | grep -Ev '^docs/' || true)
+          if [ -n "$non_docs" ]; then
+            echo "Non-docs paths detected; auto-merge blocked:"
+            echo "$non_docs"
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "All changed files are under docs/."
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Enable native auto-merge (squash)
+        if: steps.label.outputs.eligible == 'true' && steps.files.outputs.docs_only == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh pr merge "$PR_NUMBER" --repo "$REPO" --auto --squash
+          echo "Auto-merge enabled for PR #$PR_NUMBER."
