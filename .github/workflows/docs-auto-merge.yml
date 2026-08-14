@@ -1,0 +1,138 @@
+name: Docs Auto-Merge
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+      - unlabeled
+      - ready_for_review
+
+permissions:
+  # `contents: write` is required in addition to `pull-requests: write`:
+  # the `enablePullRequestAutoMerge` GraphQL mutation that
+  # `gh pr merge --auto` invokes needs contents write to configure the
+  # merge, and GitHub will fall back to an immediate `mergePullRequest`
+  # (also contents:write) if the PR is already mergeable at the time
+  # auto-merge is requested. `pull-requests: write` alone is not enough.
+  #
+  # The blast radius is still tightly constrained: the job only runs on
+  # non-draft, same-repo PRs that carry the `docs-only` label AND whose
+  # every changed path (including pre-rename paths) is under `docs/`.
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: docs-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  auto-merge:
+    if: >-
+      github.event.pull_request.draft == false
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for docs-only label
+        id: label
+        env:
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          echo "Labels on PR: $LABELS_JSON"
+          if echo "$LABELS_JSON" | jq -e 'index("docs-only")' > /dev/null; then
+            echo "eligible=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs-only label not present; nothing to do."
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify every changed file is under docs/
+        if: steps.label.outputs.eligible == 'true'
+        id: files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Include both the current path and previous_filename so a rename
+          # from outside docs/ into docs/ can't sneak in as "docs-only".
+          files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate \
+            --jq '.[] | [.filename, .previous_filename // empty] | .[]')
+          echo "Changed paths (including previous_filename for renames):"
+          echo "$files"
+          if [ -z "$files" ]; then
+            echo "PR reports no changed files; refusing to auto-merge."
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Anchor to '^docs/.+' so a hypothetical top-level file literally
+          # named 'docs' isn't misclassified as docs-only.
+          non_docs=$(echo "$files" | grep -Ev '^docs/.+' || true)
+          if [ -n "$non_docs" ]; then
+            echo "Non-docs paths detected; auto-merge blocked:"
+            echo "$non_docs"
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "All changed paths are under docs/."
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Request Copilot code review
+        if: steps.label.outputs.eligible == 'true' && steps.files.outputs.docs_only == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # `Copilot` is the reviewer handle GitHub maps to the Copilot code
+          # review app; it's also the code owner for `docs/**` per
+          # .github/CODEOWNERS. Requesting it here guarantees Copilot is
+          # actually invoked on the PR, so its APPROVED review can satisfy
+          # the "Require review from Code Owners" branch-protection rule
+          # before auto-merge fires. Idempotent: silently swallow "already
+          # requested / already reviewed" style responses so re-runs on
+          # `synchronize`, `labeled`, etc. don't fail the job.
+          if output=$(gh api -X POST \
+              "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers" \
+              -f "reviewers[]=Copilot" 2>&1); then
+            echo "Requested Copilot code review on PR #$PR_NUMBER."
+          else
+            echo "Copilot review request non-fatal error (already requested, already reviewed, or unavailable):"
+            echo "$output"
+          fi
+
+      - name: Enable native auto-merge (squash)
+        if: steps.label.outputs.eligible == 'true' && steps.files.outputs.docs_only == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh pr merge "$PR_NUMBER" --repo "$REPO" --auto --squash
+          echo "Auto-merge enabled for PR #$PR_NUMBER."
+
+      - name: Disable auto-merge if PR is no longer docs-only
+        if: steps.label.outputs.eligible != 'true' || steps.files.outputs.docs_only != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Revoke any previously-armed auto-merge so a PR that drops the
+          # docs-only label or gains non-docs paths on a later push can't
+          # slip through once required checks turn green. Idempotent: no-op
+          # when auto-merge isn't currently enabled.
+          current=$(gh pr view "$PR_NUMBER" --repo "$REPO" \
+            --json autoMergeRequest --jq '.autoMergeRequest')
+          if [ -z "$current" ] || [ "$current" = "null" ]; then
+            echo "Auto-merge is not enabled on PR #$PR_NUMBER; nothing to disable."
+          else
+            gh pr merge "$PR_NUMBER" --repo "$REPO" --disable-auto
+            echo "Auto-merge disabled for PR #$PR_NUMBER."
+          fi

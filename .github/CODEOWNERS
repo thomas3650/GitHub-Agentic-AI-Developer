@@ -1,0 +1,28 @@
+# Code owners for this repository.
+#
+# GitHub uses this file together with the "Require review from Code Owners"
+# branch-protection rule on `main` to decide who must approve a pull request
+# before it can merge (including via auto-merge).
+#
+# ---------------------------------------------------------------------------
+# docs/** -> GitHub Copilot code review
+#
+# Rationale:
+#   The Docs Auto-Merge workflow (.github/workflows/docs-auto-merge.yml) can
+#   arm GitHub's native auto-merge on a PR when (a) every changed path is
+#   under `docs/` and (b) the PR carries the `docs-only` label. Auto-merge
+#   still respects branch protection, so making Copilot the sole code owner
+#   of `docs/**` means a docs-only PR can only merge after Copilot code
+#   review has submitted an APPROVED review. That gives the automated path a
+#   real, model-based approval gate instead of merging with zero reviews.
+#
+# Prerequisite (out-of-band repo config, not versionable here):
+#   * Branch protection on `main` must have
+#     "Require a pull request before merging" ->
+#     "Require review from Code Owners" enabled.
+#     Without that rule this file has no effect.
+#
+# Non-docs paths (source, tests, workflows, config, .github/**, etc.) are
+# intentionally left without an owner here so the normal human-review path
+# stays the default for everything outside `docs/`.
+/docs/**  @Copilot
