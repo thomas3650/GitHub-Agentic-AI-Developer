@@ -7,10 +7,10 @@ on:
       - synchronize
       - reopened
       - labeled
+      - unlabeled
       - ready_for_review
 
 permissions:
-  contents: write
   pull-requests: write
 
 concurrency:
@@ -44,21 +44,26 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename')
-          echo "Changed files:"
+          # Include both the current path and previous_filename so a rename
+          # from outside docs/ into docs/ can't sneak in as "docs-only".
+          files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate \
+            --jq '.[] | [.filename, .previous_filename // empty] | .[]')
+          echo "Changed paths (including previous_filename for renames):"
           echo "$files"
           if [ -z "$files" ]; then
             echo "PR reports no changed files; refusing to auto-merge."
             echo "docs_only=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          non_docs=$(echo "$files" | grep -Ev '^docs/' || true)
+          # Anchor to '^docs/.+' so a hypothetical top-level file literally
+          # named 'docs' isn't misclassified as docs-only.
+          non_docs=$(echo "$files" | grep -Ev '^docs/.+' || true)
           if [ -n "$non_docs" ]; then
             echo "Non-docs paths detected; auto-merge blocked:"
             echo "$non_docs"
             echo "docs_only=false" >> "$GITHUB_OUTPUT"
           else
-            echo "All changed files are under docs/."
+            echo "All changed paths are under docs/."
             echo "docs_only=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -72,3 +77,24 @@ jobs:
           set -euo pipefail
           gh pr merge "$PR_NUMBER" --repo "$REPO" --auto --squash
           echo "Auto-merge enabled for PR #$PR_NUMBER."
+
+      - name: Disable auto-merge if PR is no longer docs-only
+        if: steps.label.outputs.eligible != 'true' || steps.files.outputs.docs_only != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Revoke any previously-armed auto-merge so a PR that drops the
+          # docs-only label or gains non-docs paths on a later push can't
+          # slip through once required checks turn green. Idempotent: no-op
+          # when auto-merge isn't currently enabled.
+          current=$(gh pr view "$PR_NUMBER" --repo "$REPO" \
+            --json autoMergeRequest --jq '.autoMergeRequest')
+          if [ -z "$current" ] || [ "$current" = "null" ]; then
+            echo "Auto-merge is not enabled on PR #$PR_NUMBER; nothing to disable."
+          else
+            gh pr merge "$PR_NUMBER" --repo "$REPO" --disable-auto
+            echo "Auto-merge disabled for PR #$PR_NUMBER."
+          fi

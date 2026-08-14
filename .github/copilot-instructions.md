@@ -33,7 +33,10 @@ A PR is eligible for automated merge only when **both** conditions hold:
 When those hold, the `Docs Auto-Merge` workflow
 (`.github/workflows/docs-auto-merge.yml`) enables GitHub's native auto-merge
 (squash) on the PR. The PR still waits for required status checks before it
-actually merges.
+actually merges. If either condition later stops holding (the label is
+removed, or a follow-up push adds a non-`docs/` path — including as the
+pre-rename side of a rename), the same workflow revokes auto-merge on the
+next event so the PR falls back to the human-review path.
 
 Guidance for the cloud agent:
 - If your PR touches **only** files under `docs/`, apply the `docs-only`
