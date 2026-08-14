@@ -58,3 +58,9 @@ branch-protection settings — is documented for the cloud agent in
 See [troubleshooting.md](troubleshooting.md) for the failure modes of the
 auto-merge pipeline (label not matched, non-`docs/` paths sneaking in,
 `copilot-review-clean` staying pending, PR falling back to human review).
+
+## FAQ
+
+Short answers to common questions live in [faq.md](faq.md) — e.g.
+"do I need someone to review my docs PR?", "what if I also touch code?",
+"why did my PR merge without an approval?".
