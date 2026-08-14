@@ -11,6 +11,17 @@ on:
       - ready_for_review
 
 permissions:
+  # `contents: write` is required in addition to `pull-requests: write`:
+  # the `enablePullRequestAutoMerge` GraphQL mutation that
+  # `gh pr merge --auto` invokes needs contents write to configure the
+  # merge, and GitHub will fall back to an immediate `mergePullRequest`
+  # (also contents:write) if the PR is already mergeable at the time
+  # auto-merge is requested. `pull-requests: write` alone is not enough.
+  #
+  # The blast radius is still tightly constrained: the job only runs on
+  # non-draft, same-repo PRs that carry the `docs-only` label AND whose
+  # every changed path (including pre-rename paths) is under `docs/`.
+  contents: write
   pull-requests: write
 
 concurrency:
