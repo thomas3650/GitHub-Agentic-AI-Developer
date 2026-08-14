@@ -69,6 +69,31 @@ jobs:
             echo "docs_only=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Request Copilot code review
+        if: steps.label.outputs.eligible == 'true' && steps.files.outputs.docs_only == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # `Copilot` is the reviewer handle GitHub maps to the Copilot code
+          # review app; it's also the code owner for `docs/**` per
+          # .github/CODEOWNERS. Requesting it here guarantees Copilot is
+          # actually invoked on the PR, so its APPROVED review can satisfy
+          # the "Require review from Code Owners" branch-protection rule
+          # before auto-merge fires. Idempotent: silently swallow "already
+          # requested / already reviewed" style responses so re-runs on
+          # `synchronize`, `labeled`, etc. don't fail the job.
+          if output=$(gh api -X POST \
+              "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers" \
+              -f "reviewers[]=Copilot" 2>&1); then
+            echo "Requested Copilot code review on PR #$PR_NUMBER."
+          else
+            echo "Copilot review request non-fatal error (already requested, already reviewed, or unavailable):"
+            echo "$output"
+          fi
+
       - name: Enable native auto-merge (squash)
         if: steps.label.outputs.eligible == 'true' && steps.files.outputs.docs_only == 'true'
         env:
