@@ -35,10 +35,14 @@ on:
       - submitted
       - edited
       - dismissed
-  pull_request_review_thread:
-    types:
-      - resolved
-      - unresolved
+  # NOTE: `pull_request_review_thread` is a webhook event but is NOT a
+  # valid GitHub Actions workflow trigger. Including it caused GitHub to
+  # reject this workflow at load time, so it silently failed on every run
+  # (see run 31798291964 and PR #27, which auto-merged without the gate
+  # actually being posted). If we want to re-evaluate the gate when
+  # review threads are resolved/unresolved, we'll need a different
+  # mechanism — the `pull_request_review` retriggers cover most cases
+  # because thread resolution usually accompanies a new review.
 
 permissions:
   # `statuses: write` is the only write the workflow needs (POST commit
