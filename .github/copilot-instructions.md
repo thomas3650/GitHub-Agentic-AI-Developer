@@ -32,11 +32,24 @@ A PR is eligible for automated merge only when **both** conditions hold:
 
 When those hold, the `Docs Auto-Merge` workflow
 (`.github/workflows/docs-auto-merge.yml`) enables GitHub's native auto-merge
-(squash) on the PR **and** requests a Copilot code review. The PR still
-waits for required status checks *and* for Copilot's APPROVED review
-(Copilot is the sole code owner of `docs/**` per `.github/CODEOWNERS`, and
-branch protection on `main` requires review from code owners) before it
-actually merges. If either condition later stops holding (the label is
+(squash) on the PR and requests a Copilot code review. The PR still
+waits for the required status checks before it actually merges:
+
+- **`build-test`** — the Pull Request Validation workflow (`restore`,
+  `build`, `test`) must pass.
+- **`copilot-review-clean`** — posted by
+  `.github/workflows/copilot-review-gate.yml`; turns `success` only when
+  Copilot code review has reviewed the current head commit with no
+  unresolved inline comments and no `CHANGES_REQUESTED`.
+
+No human approval is required for docs-only PRs: `docs/**` is
+intentionally unowned in `.github/CODEOWNERS`, so with
+`require_code_owner_review: true` and `required_approvals: 0` the code
+owner gate is vacuous for docs-only PRs. Non-docs paths are still owned
+by `@thomas3650`, so anything outside `docs/**` continues to need a
+human review.
+
+If either eligibility condition later stops holding (the label is
 removed, or a follow-up push adds a non-`docs/` path — including as the
 pre-rename side of a rename), the same workflow revokes auto-merge on the
 next event so the PR falls back to the human-review path.

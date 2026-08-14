@@ -1,0 +1,176 @@
+name: Copilot Review Gate
+
+# Purpose
+# -------
+# GitHub Copilot code review on this repo only ever submits
+# `state = COMMENTED`, never `APPROVED` (verified empirically on PR #23),
+# so it cannot satisfy a "Require review from Code Owners" gate directly.
+#
+# This workflow bridges that gap by evaluating Copilot's most recent
+# review on each PR and posting a commit status named
+# `copilot-review-clean` on the PR head SHA:
+#
+#   * success  - Copilot has reviewed the current head commit and all
+#                Copilot inline review threads on the PR are resolved
+#                and no CHANGES_REQUESTED review is outstanding.
+#   * failure  - Copilot has reviewed the current head commit but has
+#                unresolved inline comments or has requested changes.
+#   * pending  - Copilot has not yet reviewed the current head commit.
+#
+# The `copilot-review-clean` context is intended to be added to the
+# `main` ruleset as a required status check. Branch protection will then
+# hold merges (including native auto-merge) until Copilot's review is
+# clean on the exact commit that's about to merge, without requiring
+# CODEOWNERS to treat Copilot as an approver.
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  pull_request_review:
+    types:
+      - submitted
+      - edited
+      - dismissed
+  pull_request_review_thread:
+    types:
+      - resolved
+      - unresolved
+
+permissions:
+  # `statuses: write` is the only write the workflow needs (POST commit
+  # status). `pull-requests: read` covers PR data fetched via GraphQL.
+  statuses: write
+  pull-requests: read
+
+concurrency:
+  # Serialize per-PR so status updates apply in order and the last
+  # evaluation for a given head SHA wins. Deliberately NOT
+  # cancel-in-progress: a cancelled run could leave a stale status.
+  group: copilot-review-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    # Skip drafts (Copilot ruleset also skips them, so waiting would
+    # be pointless) and skip forks (GITHUB_TOKEN on fork PRs can't post
+    # statuses on the base repo, and the Copilot ruleset doesn't run
+    # for them either, so the check would never resolve).
+    if: >-
+      github.event.pull_request.draft == false
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate Copilot review state and post commit status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          # Fetch the last 30 reviews (with the exact commit each one
+          # reviewed) plus every review thread's isResolved flag. We
+          # need commit.oid to distinguish "Copilot's clean review is
+          # stale because the head moved" from "Copilot's clean review
+          # covers the current head".
+          query='
+            query($owner: String!, $repo: String!, $number: Int!) {
+              repository(owner: $owner, name: $repo) {
+                pullRequest(number: $number) {
+                  headRefOid
+                  reviewThreads(first: 100) {
+                    nodes {
+                      isResolved
+                      comments(first: 1) {
+                        nodes { author { login __typename } }
+                      }
+                    }
+                  }
+                  reviews(last: 30) {
+                    nodes {
+                      author { login __typename }
+                      state
+                      submittedAt
+                      commit { oid }
+                    }
+                  }
+                }
+              }
+            }
+          '
+
+          gh api graphql \
+            -f query="$query" \
+            -F owner="$OWNER" \
+            -F repo="$REPO_NAME" \
+            -F number="$PR_NUMBER" > gh-response.json
+
+          # Latest review authored by the Copilot code review bot.
+          # GraphQL exposes the login as `copilot-pull-request-reviewer`
+          # (no `[bot]` suffix, __typename: Bot).
+          latest_copilot=$(jq -c '
+            [.data.repository.pullRequest.reviews.nodes[]
+              | select(.author.__typename == "Bot"
+                       and .author.login == "copilot-pull-request-reviewer")]
+            | sort_by(.submittedAt) | last
+          ' gh-response.json)
+
+          # Count review threads that (a) were started by Copilot and
+          # (b) are still unresolved.
+          unresolved_copilot=$(jq -r '
+            [.data.repository.pullRequest.reviewThreads.nodes[]
+              | select(.isResolved == false
+                       and (.comments.nodes[0].author.__typename == "Bot")
+                       and (.comments.nodes[0].author.login == "copilot-pull-request-reviewer"))]
+            | length
+          ' gh-response.json)
+
+          head_oid=$(jq -r '.data.repository.pullRequest.headRefOid' gh-response.json)
+
+          state=""
+          description=""
+
+          if [ "$latest_copilot" = "null" ] || [ -z "$latest_copilot" ]; then
+            state="pending"
+            description="Waiting for Copilot code review of ${HEAD_SHA:0:7}."
+          else
+            reviewed_oid=$(echo "$latest_copilot" | jq -r '.commit.oid // empty')
+            review_state=$(echo "$latest_copilot" | jq -r '.state')
+
+            if [ -n "$reviewed_oid" ] && [ "$reviewed_oid" != "$head_oid" ]; then
+              state="pending"
+              description="Copilot last reviewed ${reviewed_oid:0:7}; waiting for review of ${head_oid:0:7}."
+            elif [ "$review_state" = "CHANGES_REQUESTED" ]; then
+              state="failure"
+              description="Copilot requested changes."
+            elif [ "$unresolved_copilot" -gt 0 ]; then
+              state="failure"
+              description="${unresolved_copilot} unresolved Copilot review comment(s)."
+            else
+              state="success"
+              description="Copilot review is clean."
+            fi
+          fi
+
+          # GitHub caps status descriptions at 140 characters.
+          description="${description:0:140}"
+
+          echo "Head OID:               $head_oid"
+          echo "Latest Copilot review:  $latest_copilot"
+          echo "Unresolved Copilot:     $unresolved_copilot"
+          echo "Reporting status:       state=$state description=\"$description\""
+
+          gh api -X POST "repos/$OWNER/$REPO_NAME/statuses/$HEAD_SHA" \
+            -f state="$state" \
+            -f context="copilot-review-clean" \
+            -f description="$description" \
+            -f target_url="$RUN_URL" >/dev/null
+
+          echo "Posted commit status 'copilot-review-clean=$state' on $HEAD_SHA."

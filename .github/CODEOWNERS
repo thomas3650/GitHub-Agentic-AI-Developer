@@ -5,24 +5,51 @@
 # before it can merge (including via auto-merge).
 #
 # ---------------------------------------------------------------------------
-# docs/** -> GitHub Copilot code review
+# Design intent
 #
-# Rationale:
-#   The Docs Auto-Merge workflow (.github/workflows/docs-auto-merge.yml) can
-#   arm GitHub's native auto-merge on a PR when (a) every changed path is
-#   under `docs/` and (b) the PR carries the `docs-only` label. Auto-merge
-#   still respects branch protection, so making Copilot the sole code owner
-#   of `docs/**` means a docs-only PR can only merge after Copilot code
-#   review has submitted an APPROVED review. That gives the automated path a
-#   real, model-based approval gate instead of merging with zero reviews.
+#   Non-docs PRs -> human approval required (@thomas3650).
+#   Docs-only PRs -> no human approval required. They merge automatically
+#                    once the Docs Auto-Merge workflow arms auto-merge AND
+#                    the required status checks (`build-test`,
+#                    `copilot-review-clean`) turn green.
 #
-# Prerequisite (out-of-band repo config, not versionable here):
-#   * Branch protection on `main` must have
-#     "Require a pull request before merging" ->
-#     "Require review from Code Owners" enabled.
-#     Without that rule this file has no effect.
+#   `copilot-review-clean` is posted by .github/workflows/copilot-review-gate.yml
+#   and turns green only when GitHub Copilot code review has reviewed the
+#   current head commit with no unresolved inline comments and no
+#   CHANGES_REQUESTED. That's how Copilot's review effectively gates the
+#   docs auto-merge path without CODEOWNERS having to treat Copilot as an
+#   approver (Copilot code review only ever submits state=COMMENTED, as
+#   verified empirically on PR #23).
 #
-# Non-docs paths (source, tests, workflows, config, .github/**, etc.) are
-# intentionally left without an owner here so the normal human-review path
-# stays the default for everything outside `docs/`.
-/docs/**  @Copilot
+# CODEOWNERS mechanics
+#
+#   The catch-all rule below assigns @thomas3650 as code owner of every
+#   path in the repo. The explicit "docs/**" rule immediately below it has
+#   NO owners, which per GitHub's CODEOWNERS syntax clears the catch-all
+#   for docs paths -- meaning docs-only PRs have no code owner and, with
+#   `require_code_owner_review: true`, need no code-owner approval to
+#   merge.
+#
+#   Order matters: last matching rule wins. Keep `/docs/**` after `*`.
+#
+# Prerequisite (out-of-band repo config, not versionable here)
+#
+#   Ruleset on `main` must have:
+#     * "Require a pull request before merging" enabled
+#     * "Require review from Code Owners"        enabled
+#     * "Required approvals" = 0
+#       (Approvals are gated by CODEOWNERS per-path, not a global count.)
+#     * Required status checks include `build-test` and
+#       `copilot-review-clean`.
+#
+#   Without those rules this file has no effect.
+
+# Catch-all: everything not otherwise matched needs @thomas3650 approval.
+*         @thomas3650
+
+# docs/** intentionally has NO code owner. With
+# `require_code_owner_review: true` and `required_approvals: 0`, this
+# lets docs-only PRs merge without a human approval, gated only by the
+# required status checks (`build-test`, `copilot-review-clean`) and the
+# eligibility logic in .github/workflows/docs-auto-merge.yml.
+/docs/**
