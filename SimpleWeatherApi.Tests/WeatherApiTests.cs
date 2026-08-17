@@ -114,4 +114,54 @@ public sealed class WeatherApiTests : IClassFixture<WebApplicationFactory<Progra
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("The city query parameter is required.", error?["error"]?.GetValue<string>());
     }
+
+    [Fact]
+    public async Task GetWeatherRainReturnsRainAmountForCity()
+    {
+        var response = await _client.GetAsync("/weather/rain?city=London");
+
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.Content.ReadFromJsonAsync<JsonObject>();
+
+        Assert.NotNull(body);
+        Assert.Equal("London", body["city"]?.GetValue<string>());
+
+        var rainMm = body["rainMm"]?.GetValue<double>();
+        Assert.NotNull(rainMm);
+        Assert.InRange(rainMm.Value, 0d, 50d);
+    }
+
+    [Fact]
+    public async Task GetWeatherRainTrimsCityName()
+    {
+        var response = await _client.GetAsync("/weather/rain?city=%20%20London%20%20");
+
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.Content.ReadFromJsonAsync<JsonObject>();
+
+        Assert.NotNull(body);
+        Assert.Equal("London", body["city"]?.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task GetWeatherRainRequiresCity()
+    {
+        var response = await _client.GetAsync("/weather/rain");
+        var error = await response.Content.ReadFromJsonAsync<JsonObject>();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("The city query parameter is required.", error?["error"]?.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task GetWeatherRainRejectsBlankCity()
+    {
+        var response = await _client.GetAsync("/weather/rain?city=%20%20%20");
+        var error = await response.Content.ReadFromJsonAsync<JsonObject>();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("The city query parameter is required.", error?["error"]?.GetValue<string>());
+    }
 }
