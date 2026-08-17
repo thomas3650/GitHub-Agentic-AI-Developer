@@ -15,7 +15,7 @@ public sealed class RainForecastService : IRainForecastService
 
         var normalizedCity = city.Trim();
         var seed = normalizedCity.ToUpperInvariant().Sum(character => (long)character);
-        var rainMm = Math.Round(seed % (MaxRainMm * 10d) / 10d, 1);
+        var rainMm = Math.Round((seed % (long)(MaxRainMm * 10)) / 10d, 1);
 
         return new RainForecast(normalizedCity, rainMm);
     }
