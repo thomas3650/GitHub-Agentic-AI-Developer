@@ -59,6 +59,13 @@ See [troubleshooting.md](troubleshooting.md) for the failure modes of the
 auto-merge pipeline (label not matched, non-`docs/` paths sneaking in,
 `copilot-review-clean` staying pending, PR falling back to human review).
 
+## Opening a PR
+
+Every new PR is prefilled from
+[`.github/pull_request_template.md`](../.github/pull_request_template.md).
+See [pr-template.md](pr-template.md) for what each section is for and
+how it maps to the review paths above.
+
 ## FAQ
 
 Short answers to common questions live in [faq.md](faq.md) — e.g.
