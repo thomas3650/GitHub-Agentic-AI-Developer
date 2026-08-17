@@ -28,6 +28,20 @@ public sealed class CityQueryValidatorTests
         Assert.Null(validationError);
     }
 
+    [Theory]
+    [InlineData("New York", "New York")]
+    [InlineData("  New York  ", "New York")]
+    [InlineData("\tSan Francisco\t", "San Francisco")]
+    [InlineData("  San  Francisco  ", "San  Francisco")]
+    public void TryNormalizePreservesInternalWhitespaceWhenTrimming(string input, string expected)
+    {
+        var success = _validator.TryNormalize(input, out var normalizedCity, out var validationError);
+
+        Assert.True(success);
+        Assert.Equal(expected, normalizedCity);
+        Assert.Null(validationError);
+    }
+
     [Fact]
     public void TryNormalizeReturnsBadRequestForNullCity()
     {
