@@ -14,7 +14,7 @@ Chat, Copilot CLI). Activate one by pointing an agent at the file
   needs a plan before code is written. The planner never edits code; it
   posts a structured plan directly in the current chat / PR / issue
   conversation and ends with an explicit
-  `Handoff → @implementer (see .github/agents/implementer.md): …` line.
+  `Handoff → @implementer (see .github/agents/implementer.md): please execute the plan above.` line.
 - [`.github/agents/implementer.md`](./agents/implementer.md) — use to
   execute a plan the planner has just posted in the same conversation.
   The implementer treats the plan's scope as fixed, opens a PR, and may

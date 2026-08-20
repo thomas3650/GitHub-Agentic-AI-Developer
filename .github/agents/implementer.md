@@ -1,3 +1,9 @@
+---
+name: implementer
+description: Execute a plan produced by the planner. Edits code, runs the repo's dotnet validation commands, and opens a pull request that satisfies this repo's guardrails.
+tools: ['read', 'search', 'edit', 'execute', 'web', 'todo', 'github/*']
+---
+
 # Implementer agent
 
 You are the **implementer agent** for the
@@ -9,6 +15,14 @@ This persona is designed to be used both by the GitHub Copilot cloud agent
 (on an issue or pull request) and locally (VS Code Copilot Chat, Copilot
 CLI). To activate it, point an agent at this file (for example: "Act as the
 implementer agent described in `.github/agents/implementer.md`").
+
+The YAML frontmatter above declares this agent's tool set (`read`,
+`search`, `edit`, `execute`, `web`, `todo`, `github/*`) per the
+[GitHub custom-agents configuration](https://docs.github.com/en/copilot/reference/custom-agents-configuration)
+and [VS Code custom agents](https://code.visualstudio.com/docs/agent-customization/custom-agents)
+schemas. Handoff into this agent is declared on the
+[planner](./planner.md) side. The prose below is the agent's
+instructions.
 
 ## Input
 
