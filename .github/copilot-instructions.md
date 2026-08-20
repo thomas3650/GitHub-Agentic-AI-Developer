@@ -4,6 +4,23 @@
 - This repository contains a small ASP.NET Core minimal API in `SimpleWeatherApi` and xUnit tests in `SimpleWeatherApi.Tests`.
 - Main endpoints are `/weather` and `/weather/description` with `city` query validation.
 
+## Agent personas
+This repo defines a two-agent, plan-then-implement workflow. Both persona
+files work in the GitHub Copilot cloud agent and locally (VS Code Copilot
+Chat, Copilot CLI). Activate one by pointing an agent at the file
+(e.g. "Act as the agent described in `.github/agents/planner.md`").
+
+- [`.github/agents/planner.md`](./agents/planner.md) — use when a request
+  needs a plan before code is written. The planner never edits code; it
+  posts a structured plan directly in the current chat / PR / issue
+  conversation and ends with an explicit
+  `Handoff → @implementer (see .github/agents/implementer.md): please execute the plan above.` line.
+- [`.github/agents/implementer.md`](./agents/implementer.md) — use to
+  execute a plan the planner has just posted in the same conversation.
+  The implementer treats the plan's scope as fixed, opens a PR, and may
+  ask only about implementation details (naming, file placement, minor
+  design choices).
+
 ## Expected workflow for code changes
 1. Keep changes focused and minimal to the user request.
 2. Preserve current API behavior unless the request explicitly changes it.
