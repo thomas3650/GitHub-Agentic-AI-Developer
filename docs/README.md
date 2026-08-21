@@ -65,3 +65,9 @@ Every new PR is prefilled from
 [`.github/pull_request_template.md`](../.github/pull_request_template.md).
 See [pr-template.md](pr-template.md) for what each section is for and
 how it maps to the review paths above.
+
+## FAQ
+
+Short answers to common questions live in [faq.md](faq.md) — e.g.
+"do I need someone to review my docs PR?", "what if I also touch code?",
+"why did my PR merge without an approval?"
