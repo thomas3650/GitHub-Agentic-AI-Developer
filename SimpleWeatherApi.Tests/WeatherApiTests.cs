@@ -16,6 +16,19 @@ public sealed class WeatherApiTests : IClassFixture<WebApplicationFactory<Progra
     }
 
     [Fact]
+    public async Task SwaggerDocumentIsAvailable()
+    {
+        var response = await _client.GetAsync("/swagger/v1/swagger.json");
+
+        response.EnsureSuccessStatusCode();
+
+        var document = await response.Content.ReadFromJsonAsync<JsonObject>();
+        Assert.NotNull(document);
+        Assert.Equal("Simple Weather API", document["info"]?["title"]?.GetValue<string>());
+        Assert.Equal("v1", document["info"]?["version"]?.GetValue<string>());
+    }
+
+    [Fact]
     public async Task GetWeatherReturnsForecastForCity()
     {
         var response = await _client.GetAsync("/weather?city=London");
