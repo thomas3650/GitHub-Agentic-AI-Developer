@@ -5,6 +5,7 @@ using SimpleWeatherApi.Validation;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<IWeatherForecastService, WeatherForecastService>();
 builder.Services.AddSingleton<IWeatherDescriptionService, WeatherDescriptionService>();
+builder.Services.AddSingleton<IRainForecastService, RainForecastService>();
 builder.Services.AddSingleton<ICityQueryValidator, CityQueryValidator>();
 builder.Services.AddEndpoints(typeof(Program).Assembly);
 
